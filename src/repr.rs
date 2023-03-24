@@ -240,6 +240,34 @@ impl<T> Repr<T> {
         self.set_len(len + 1);
     }
 
+    pub fn remove(&mut self, idx: usize) -> T {
+        let len = self.len();
+
+        assert!(len >= idx, "index out of range");
+
+        let count = self.len() - idx - 1;
+        let ptr: *const T = self.as_ptr();
+
+        let elem = unsafe { ptr::read(ptr) };
+
+        // shuffle
+
+        let ptr: *mut T = self.as_ptr_mut();
+        if idx < len {
+            unsafe {
+                ptr::copy(ptr.add(idx + 1), ptr.add(idx), count);
+            }
+        } else if idx == len {
+            // no shift
+        } else {
+            unreachable!();
+        }
+
+        self.set_len(len - 1);
+
+        elem
+    }
+
     pub fn as_ptr(&self) -> *const T {
         match self.is_inline() {
             true => (self.inline_data() as *const [T]) as *const T,

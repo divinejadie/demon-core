@@ -76,8 +76,10 @@ impl<T> Vector<T> {
         self.0.insert(idx, element);
     }
 
-    // #[inline]
-    // pub fn remove(&mut self, idx: usize) -> Option<T> {}
+    #[inline]
+    pub fn remove(&mut self, idx: usize) -> T {
+        self.0.remove(idx)
+    }
 
     #[inline]
     pub fn as_slice(&self) -> &[T] {

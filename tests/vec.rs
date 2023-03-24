@@ -171,11 +171,13 @@ fn collect() {
     let vec: Vector<i32> = iter.collect();
     assert_eq!(vec, &[0i32, 1i32, 2i32, 4i32]);
 }
+
 #[test]
 fn insert() {
     let mut vec = Vector::new();
     vec.extend(&[0, 1, 3]);
     vec.insert(2, 2);
+
     assert_eq!(vec, &[0, 1, 2, 3]);
 
     let mut vec = Vector::new();
@@ -187,8 +189,20 @@ fn insert() {
     let mut vec = Vector::new();
     vec.insert(0, 2);
     assert_eq!(vec[0], 2);
+
     let mut vec = Vector::new_heap();
     vec.extend(&[0, 1, 3]);
     vec.insert(3, 2);
+
     assert_eq!(vec, &[0, 1, 3, 2]);
+}
+
+#[test]
+fn remove() {
+    let mut vec = Vector::<i32>::new();
+    vec.extend(&[0, 1, 2, 3]);
+    vec.remove(0);
+    assert_eq!(vec, &[1, 2, 3]);
+    vec.remove(2);
+    assert_eq!(vec, &[1, 2]);
 }
