@@ -162,6 +162,19 @@ impl<T> Repr<T> {
         }
     }
 
+    pub fn extend_from_slice(&mut self, data: &[T]) {
+        let new_size = self.len() + data.len();
+        if new_size >= self.capacity() {
+            self.grow(new_size);
+        }
+
+        let ptr: *mut T = self.as_ptr_mut() as *mut T;
+        let data_ptr = data as *const [T];
+        unsafe { std::ptr::copy_nonoverlapping(data_ptr as *const T, ptr as *mut T, data.len()) };
+
+        self.set_len(new_size);
+    }
+
     pub fn push(&mut self, elem: T) {
         let new_len = self.len() + 1;
         match self.is_inline() {
