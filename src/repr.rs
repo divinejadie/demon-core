@@ -163,16 +163,18 @@ impl<T> Repr<T> {
     }
 
     pub fn extend_from_slice(&mut self, data: &[T]) {
-        let new_size = self.len() + data.len();
+        let new_len = self.len() + data.len();
+        let new_size = new_len * std::mem::size_of::<T>();
+
         if new_size >= self.capacity() {
             self.grow(new_size);
         }
 
-        let ptr: *mut T = self.as_ptr_mut() as *mut T;
+        let ptr: *mut T = self.as_ptr_mut();
         let data_ptr = data as *const [T];
-        unsafe { std::ptr::copy_nonoverlapping(data_ptr as *const T, ptr as *mut T, data.len()) };
+        unsafe { std::ptr::copy_nonoverlapping(data_ptr as *const T, ptr, data.len()) };
 
-        self.set_len(new_size);
+        self.set_len(new_len);
     }
 
     pub fn push(&mut self, elem: T) {
@@ -208,7 +210,7 @@ impl<T> Repr<T> {
 
     pub fn as_ptr(&self) -> *const T {
         match self.is_inline() {
-            true => &self.inline_data()[0],
+            true => (self.inline_data() as *const [T]) as *const T,
             false => {
                 let self_heap = self.get_heap();
                 self_heap.ptr.as_ptr()
