@@ -42,6 +42,7 @@ fn bytes_mut_inline() {
 
 proptest! {
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn proptest(text in "\\PC*") {
         let str = Str::new(&text);
         assert_eq!(&str, &text);
