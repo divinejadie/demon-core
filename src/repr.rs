@@ -1,11 +1,13 @@
-use std::{
-    alloc::Layout,
-    marker::PhantomData,
-    mem::{ManuallyDrop, MaybeUninit},
-    ptr::NonNull,
-};
+extern crate alloc;
+use alloc::alloc::{alloc, dealloc, handle_alloc_error, realloc};
 
 use crate::INLINE_SIZE;
+use core::{
+    alloc::Layout,
+    marker::PhantomData,
+    mem::{self, ManuallyDrop, MaybeUninit},
+    ptr::{self, NonNull},
+};
 
 #[repr(C)]
 pub union Repr<T> {
@@ -35,11 +37,11 @@ impl<T> Drop for Repr<T> {
                 unsafe { ManuallyDrop::drop(&mut self.heap) };
 
                 let self_heap = self.get_heap_mut();
-                let elem_size = std::mem::size_of::<T>();
+                let elem_size = mem::size_of::<T>();
 
                 if self_heap.capacity != 0 && elem_size != 0 {
                     unsafe {
-                        std::alloc::dealloc(
+                        dealloc(
                             self_heap.ptr.as_ptr() as *mut u8,
                             Layout::array::<T>(self_heap.capacity).unwrap(),
                         );
@@ -72,13 +74,13 @@ impl<T> Repr<T> {
     pub fn new_inline(data: &[T]) -> Self {
         let len = data.len();
         assert!(
-            std::mem::size_of::<T>() * len <= INLINE_SIZE,
+            mem::size_of::<T>() * len <= INLINE_SIZE,
             "data too large to be stored inline"
         );
         let mut inline_data: [u8; INLINE_SIZE] = unsafe { MaybeUninit::zeroed().assume_init() };
         let inline_t: *mut [T] = unsafe { inline_data.as_mut_slice().align_to_mut::<T>().1 };
         let data_ptr: *const [T] = data;
-        unsafe { std::ptr::copy_nonoverlapping(data_ptr as *const T, inline_t as *mut T, len) };
+        unsafe { ptr::copy_nonoverlapping(data_ptr as *const T, inline_t as *mut T, len) };
 
         Repr {
             inline: ManuallyDrop::new(Inline {
@@ -97,7 +99,7 @@ impl<T> Repr<T> {
 
         let ptr: *mut T = repr.as_ptr_mut();
         let data_ptr = data as *const [T];
-        unsafe { std::ptr::copy_nonoverlapping(data_ptr as *const T, ptr as *mut T, data.len()) };
+        unsafe { ptr::copy_nonoverlapping(data_ptr as *const T, ptr as *mut T, data.len()) };
 
         repr.set_len(data.len());
         repr
@@ -105,7 +107,7 @@ impl<T> Repr<T> {
 
     pub fn new_heap() -> Self {
         let len = 0;
-        let capacity = if std::mem::size_of::<T>() == 0 {
+        let capacity = if mem::size_of::<T>() == 0 {
             usize::MAX
         } else {
             0
@@ -147,7 +149,7 @@ impl<T> Repr<T> {
         match self.is_inline() {
             true => &self.inline_data()[..self.len()],
             false => unsafe {
-                &*std::ptr::slice_from_raw_parts(self.get_heap().ptr.as_ptr(), self.get_heap().len)
+                &*ptr::slice_from_raw_parts(self.get_heap().ptr.as_ptr(), self.get_heap().len)
             },
         }
     }
@@ -157,14 +159,14 @@ impl<T> Repr<T> {
         match self.is_inline() {
             true => &mut self.inline_data_mut()[..len],
             false => unsafe {
-                &mut *std::ptr::slice_from_raw_parts_mut(self.get_heap().ptr.as_ptr(), len)
+                &mut *ptr::slice_from_raw_parts_mut(self.get_heap().ptr.as_ptr(), len)
             },
         }
     }
 
     pub fn extend_from_slice(&mut self, data: &[T]) {
         let new_len = self.len() + data.len();
-        let new_size = new_len * std::mem::size_of::<T>();
+        let new_size = new_len * mem::size_of::<T>();
 
         if new_size >= self.capacity() {
             self.grow(new_size);
@@ -172,7 +174,7 @@ impl<T> Repr<T> {
 
         let ptr: *mut T = self.as_ptr_mut();
         let data_ptr = data as *const [T];
-        unsafe { std::ptr::copy_nonoverlapping(data_ptr as *const T, ptr, data.len()) };
+        unsafe { ptr::copy_nonoverlapping(data_ptr as *const T, ptr, data.len()) };
 
         self.set_len(new_len);
     }
@@ -181,7 +183,7 @@ impl<T> Repr<T> {
         let new_len = self.len() + 1;
         match self.is_inline() {
             true => {
-                if new_len * std::mem::size_of::<T>() <= INLINE_SIZE {
+                if new_len * mem::size_of::<T>() <= INLINE_SIZE {
                     let len = self.len();
                     self.inline_data_mut()[len] = elem;
                     self.set_len(new_len);
@@ -203,7 +205,7 @@ impl<T> Repr<T> {
 
         let len = self.len();
         let ptr = unsafe { self.as_ptr().add(len - 1) };
-        let data = unsafe { std::ptr::read(ptr) };
+        let data = unsafe { ptr::read(ptr) };
         self.set_len(len - 1);
         Some(data)
     }
@@ -236,14 +238,14 @@ impl<T> Repr<T> {
         let self_heap = self.get_heap_mut();
 
         unsafe {
-            std::ptr::write(self_heap.ptr.as_ptr().add(self_heap.len), elem);
+            ptr::write(self_heap.ptr.as_ptr().add(self_heap.len), elem);
         }
 
         self_heap.len += 1;
     }
 
     fn grow(&mut self, min_size: usize) {
-        assert!(std::mem::size_of::<T>() != 0); // don't grow for zst
+        assert!(mem::size_of::<T>() != 0); // don't grow for zst
 
         let (new_cap, new_layout) = if self.capacity() == 0 {
             let new_cap = min_size.max(1);
@@ -263,12 +265,12 @@ impl<T> Repr<T> {
 
         let new_ptr = if self.capacity() == 0 {
             // zst
-            unsafe { std::alloc::alloc(new_layout) }
+            unsafe { alloc(new_layout) }
         } else {
             match self.is_inline() {
                 true => {
                     // grow from stack to heap
-                    debug_assert!(new_cap * std::mem::size_of::<T>() >= INLINE_SIZE);
+                    debug_assert!(new_cap * mem::size_of::<T>() >= INLINE_SIZE);
                     self.inline_to_heap(new_cap)
                 }
                 false => {
@@ -277,7 +279,7 @@ impl<T> Repr<T> {
 
                     let old_layout = Layout::array::<T>(self_heap.capacity).unwrap();
                     let old_ptr = self_heap.ptr.as_ptr() as *mut u8;
-                    unsafe { std::alloc::realloc(old_ptr, old_layout, new_layout.size()) }
+                    unsafe { realloc(old_ptr, old_layout, new_layout.size()) }
                 }
             }
         };
@@ -286,7 +288,7 @@ impl<T> Repr<T> {
 
         self_heap.ptr = match NonNull::new(new_ptr as *mut T) {
             Some(p) => p,
-            None => std::alloc::handle_alloc_error(new_layout),
+            None => handle_alloc_error(new_layout),
         };
         self_heap.capacity = new_cap;
     }
@@ -297,7 +299,7 @@ impl<T> Repr<T> {
         let new_self = Self::new_heap();
         let len = self.len();
 
-        let old_self: Self = std::mem::replace(self, new_self);
+        let old_self: Self = mem::replace(self, new_self);
 
         let mut self_heap = self.get_heap_mut();
 
@@ -305,14 +307,14 @@ impl<T> Repr<T> {
         self_heap.capacity = new_capacity; // overwritten again later
 
         let new_layout = Layout::array::<T>(new_capacity).unwrap();
-        let ptr = unsafe { std::alloc::alloc(new_layout) } as *mut T;
+        let ptr = unsafe { alloc(new_layout) } as *mut T;
         let data_ptr: *const [T] = old_self.inline_data();
 
         unsafe {
-            std::ptr::copy_nonoverlapping(data_ptr as *const T, ptr as *mut T, len);
+            ptr::copy_nonoverlapping(data_ptr as *const T, ptr as *mut T, len);
         }
 
-        std::mem::forget(old_self);
+        mem::forget(old_self);
         ptr as *mut u8
     }
 
@@ -321,12 +323,12 @@ impl<T> Repr<T> {
         match self.is_inline() {
             true => {
                 let len = self.len();
-                unsafe { std::mem::transmute(&mut self.get_inline_mut().data[..len]) }
+                unsafe { mem::transmute(&mut self.get_inline_mut().data[..len]) }
             }
             false => {
                 let len = self.get_heap().len;
                 unsafe {
-                    std::mem::transmute(&mut *std::ptr::slice_from_raw_parts_mut(
+                    mem::transmute(&mut *ptr::slice_from_raw_parts_mut(
                         self.get_heap_mut().ptr.as_ptr(),
                         len,
                     ))
@@ -338,9 +340,9 @@ impl<T> Repr<T> {
     #[inline]
     pub fn bytes(&self) -> &[u8] {
         match self.is_inline() {
-            true => unsafe { std::mem::transmute(&self.get_inline().data[..self.len()]) },
+            true => unsafe { mem::transmute(&self.get_inline().data[..self.len()]) },
             false => unsafe {
-                std::mem::transmute(&*std::ptr::slice_from_raw_parts(
+                mem::transmute(&*ptr::slice_from_raw_parts(
                     self.get_heap().ptr.as_ptr(),
                     self.get_heap().len,
                 ))
@@ -368,14 +370,14 @@ impl<T> Repr<T> {
     pub fn set_len(&mut self, len: usize) {
         match self.is_inline() {
             true => {
-                assert!(len * std::mem::size_of::<T>() <= INLINE_SIZE);
+                assert!(len * mem::size_of::<T>() <= INLINE_SIZE);
                 self.get_inline_mut().disc.set_len(len as u8)
             }
             false => {
                 #[cfg(target_pointer_width = "64")]
-                assert!(len * std::mem::size_of::<T>() < 0x7FFFFFFFFFFFFFFF);
+                assert!(len * mem::size_of::<T>() < 0x7FFFFFFFFFFFFFFF);
                 #[cfg(target_pointer_width = "32")]
-                assert!(len * std::mem::size_of::<T>() < 0x7FFFFFFF);
+                assert!(len * mem::size_of::<T>() < 0x7FFFFFFF);
                 self.get_heap_mut().len = len
             }
         }
@@ -461,21 +463,27 @@ impl Discriminant {
 
 #[cfg(test)]
 mod test {
+    use core::mem;
+
     use super::Discriminant;
     use crate::{repr::Repr, Str};
 
     #[test]
     fn repr_size() {
-        assert_eq!(
-            std::mem::size_of::<Repr<u32>>(),
-            std::mem::size_of::<Vec<u32>>()
-        )
+        #[cfg(target_pointer_width = "64")]
+        assert_eq!(mem::size_of::<Repr<u32>>(), 24);
+
+        #[cfg(target_pointer_width = "32")]
+        assert_eq!(mem::size_of::<Repr<u32>>(), 12);
     }
 
     #[test]
     fn str_size_align() {
-        assert_eq!(std::mem::size_of::<Str>(), std::mem::size_of::<String>());
-        assert_eq!(std::mem::align_of::<Str>(), std::mem::align_of::<String>());
+        #[cfg(target_pointer_width = "64")]
+        assert_eq!(mem::size_of::<Str>(), 24);
+
+        #[cfg(target_pointer_width = "32")]
+        assert_eq!(mem::size_of::<Str>(), 12);
     }
 
     #[test]

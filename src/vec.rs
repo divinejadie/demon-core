@@ -1,9 +1,14 @@
-use std::{
+extern crate alloc;
+
+use core::{
     marker::PhantomData,
-    mem::ManuallyDrop,
+    mem::{self, ManuallyDrop},
     ops::{Deref, DerefMut, Index, IndexMut},
+    ptr,
     slice::SliceIndex,
 };
+
+use alloc::fmt;
 
 use crate::repr::Repr;
 
@@ -93,10 +98,10 @@ impl<T> Vector<T> {
     }
 }
 
-impl<T: std::fmt::Debug> std::fmt::Debug for Vector<T> {
+impl<T: fmt::Debug> fmt::Debug for Vector<T> {
     #[inline]
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        std::fmt::Debug::fmt(&**self, f)
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Debug::fmt(&**self, f)
     }
 }
 
@@ -115,16 +120,16 @@ impl<T> Iterator for IntoIter<T> {
     fn next(&mut self) -> Option<T> {
         if self.ptr == self.end {
             None
-        } else if std::mem::size_of::<T>() == 0 {
+        } else if mem::size_of::<T>() == 0 {
             self.end = self.end.wrapping_sub(1);
 
             // Make up a value of this ZST.
-            Some(unsafe { std::mem::zeroed() })
+            Some(unsafe { mem::zeroed() })
         } else {
             let old = self.ptr;
             self.ptr = unsafe { self.ptr.add(1) };
 
-            Some(unsafe { std::ptr::read(old) })
+            Some(unsafe { ptr::read(old) })
         }
     }
 }
@@ -138,7 +143,7 @@ impl<T> IntoIterator for Vector<T> {
         unsafe {
             let mut me = ManuallyDrop::new(self);
             let begin = me.as_mut_ptr();
-            let end = if std::mem::size_of::<T>() == 0 {
+            let end = if mem::size_of::<T>() == 0 {
                 begin.wrapping_add(me.len())
             } else {
                 begin.add(me.len()) as *const T

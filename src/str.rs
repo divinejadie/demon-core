@@ -1,6 +1,8 @@
+extern crate alloc;
+
 use crate::repr::Repr;
 use crate::INLINE_SIZE;
-use std::ops::Deref;
+use core::ops::Deref;
 
 #[repr(transparent)]
 pub struct Str(Repr<u8>);
@@ -84,10 +86,10 @@ macro_rules! impl_eq {
 }
 
 impl_eq! { Str, str }
-impl_eq! {Str, String }
+impl_eq! {Str, alloc::string::String }
 impl_eq! { Str, &'a str }
 #[cfg(not(no_global_oom_handling))]
-impl_eq! { std::borrow::Cow< 'a,str>, Str }
+impl_eq! { alloc::borrow::Cow< 'a,str>, Str }
 
 impl AsRef<str> for Str {
     #[inline]
@@ -101,13 +103,13 @@ impl Deref for Str {
 
     #[inline]
     fn deref(&self) -> &Self::Target {
-        unsafe { std::str::from_utf8_unchecked(self.as_bytes()) }
+        unsafe { core::str::from_utf8_unchecked(self.as_bytes()) }
     }
 }
 
-impl std::fmt::Debug for Str {
+impl core::fmt::Debug for Str {
     #[inline]
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        std::fmt::Debug::fmt(&**self, f)
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        core::fmt::Debug::fmt(&**self, f)
     }
 }

@@ -1,3 +1,5 @@
+#![no_std]
+
 mod repr;
 mod str;
 mod vec;

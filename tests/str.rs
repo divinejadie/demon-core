@@ -1,3 +1,5 @@
+extern crate alloc;
+
 use demon_core::Str;
 use proptest::prelude::*;
 
