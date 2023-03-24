@@ -61,12 +61,33 @@ fn push() {
 }
 
 #[test]
+#[cfg(target_pointer_width = "64")]
 fn extend() {
     let mut vec = Vector::<u32>::new();
     vec.extend(&[0, 1, 2, 3]);
     assert_eq!(vec.len(), 4);
     assert_eq!(vec.is_inline(), true);
     assert_eq!(vec, &[0, 1, 2, 3]);
+
+    let mut vec = Vector::<u32>::new_heap();
+    vec.extend(&[0, 1, 2, 3, 4]);
+    assert_eq!(vec.len(), 5);
+    assert_eq!(vec.is_inline(), false);
+    assert_eq!(vec, &[0, 1, 2, 3, 4]);
+
+    let mut vec = Vector::<u32>::new();
+    vec.extend_from_slice(&[0, 1, 2, 3, 4]);
+    assert_eq!(vec, &[0, 1, 2, 3, 4]);
+}
+
+#[test]
+#[cfg(target_pointer_width = "32")]
+fn extend() {
+    let mut vec = Vector::<u32>::new();
+    vec.extend(&[0, 1]);
+    assert_eq!(vec.len(), 2);
+    assert_eq!(vec.is_inline(), true);
+    assert_eq!(vec, &[0, 1]);
 
     let mut vec = Vector::<u32>::new_heap();
     vec.extend(&[0, 1, 2, 3, 4]);
@@ -93,11 +114,13 @@ fn pop() {
 }
 
 #[test]
+#[cfg(target_pointer_width = "64")]
 fn grow() {
     let mut vec = Vector::<u8>::new();
     vec.extend(&[
         0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21,
     ]);
+
     assert_eq!(vec.is_inline(), true);
     assert_eq!(vec.len(), 22);
 
@@ -113,6 +136,26 @@ fn grow() {
         vec,
         &[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23]
     )
+}
+
+#[test]
+#[cfg(target_pointer_width = "32")]
+fn grow() {
+    let mut vec = Vector::<u8>::new();
+    vec.extend(&[0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
+
+    assert_eq!(vec.is_inline(), true);
+    assert_eq!(vec.len(), 10);
+
+    vec.push(10);
+    assert_eq!(vec.is_inline(), true);
+    assert_eq!(vec.len(), 11);
+
+    vec.push(11);
+    assert_eq!(vec.is_inline(), false);
+    assert_eq!(vec.len(), 12);
+
+    assert_eq!(vec, &[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11])
 }
 
 #[test]

@@ -13,8 +13,17 @@ fn len_inline() {
 fn capacity_inline() {
     let primitive = "test string";
 
+    #[cfg(target_pointer_width = "64")]
     assert_eq!(Str::new(primitive).capacity(), 23);
+
+    #[cfg(target_pointer_width = "64")]
     assert_eq!(Str::new("").capacity(), 23);
+
+    #[cfg(target_pointer_width = "32")]
+    assert_eq!(Str::new(primitive).capacity(), 11);
+
+    #[cfg(target_pointer_width = "32")]
+    assert_eq!(Str::new("").capacity(), 11);
 }
 
 #[test]
@@ -37,7 +46,11 @@ fn bytes_mut_inline() {
 
     assert_eq!(str.as_bytes(), &[240, 159, 146, 151]);
     assert_eq!(str.len(), 4);
+
+    #[cfg(target_pointer_width = "64")]
     assert_eq!(str.capacity(), 23);
+    #[cfg(target_pointer_width = "32")]
+    assert_eq!(str.capacity(), 11);
 }
 
 proptest! {
