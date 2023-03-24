@@ -62,23 +62,8 @@ impl<'a, T: Copy> Extend<&'a T> for Repr<T> {
 impl<T> Extend<T> for Repr<T> {
     fn extend<I: IntoIterator<Item = T>>(&mut self, iter: I) {
         let iter = iter.into_iter();
-// separate function for Str to avoid miri errors i dont understand 👽
-impl Repr<u8> {
-    pub fn new_inline_bytes(data: &[u8]) -> Self {
-        let len = data.len();
-        assert!(len <= INLINE_SIZE, "data too large to be stored inline");
-        let mut inline_data: [u8; INLINE_SIZE] = unsafe { MaybeUninit::zeroed().assume_init() };
-
-        for (i, elem) in data.into_iter().enumerate() {
-            inline_data[i] = *elem;
-        }
-
-        Repr::<u8> {
-            inline: ManuallyDrop::new(Inline {
-                disc: Discriminant::new(true, len as u8),
-                data: inline_data,
-                _phantom: PhantomData::<u8>,
-            }),
+        for elem in iter {
+            self.push(elem);
         }
     }
 }
@@ -91,8 +76,9 @@ impl<T> Repr<T> {
             "data too large to be stored inline"
         );
         let mut inline_data: [u8; INLINE_SIZE] = unsafe { MaybeUninit::zeroed().assume_init() };
-        let inline_t = unsafe { &mut inline_data.as_mut_slice().align_to_mut::<T>().1 };
-        unsafe { std::ptr::copy_nonoverlapping(data.as_ptr(), &mut inline_t[0] as *mut T, len) };
+        let inline_t: *mut [T] = unsafe { inline_data.as_mut_slice().align_to_mut::<T>().1 };
+        let data_ptr: *const [T] = data;
+        unsafe { std::ptr::copy_nonoverlapping(data_ptr as *const T, inline_t as *mut T, len) };
 
         Repr {
             inline: ManuallyDrop::new(Inline {
@@ -101,6 +87,20 @@ impl<T> Repr<T> {
                 _phantom: PhantomData::<T>,
             }),
         }
+    }
+
+    #[inline]
+    pub fn from_heap(data: &[T]) -> Self {
+        let mut repr = Self::new_heap();
+
+        repr.grow(data.len());
+
+        let ptr: *mut T = repr.as_ptr_mut();
+        let data_ptr = data as *const [T];
+        unsafe { std::ptr::copy_nonoverlapping(data_ptr as *const T, ptr as *mut T, data.len()) };
+
+        repr.set_len(data.len());
+        repr
     }
 
     pub fn new_heap() -> Self {
@@ -203,6 +203,16 @@ impl<T> Repr<T> {
         }
     }
 
+    pub fn as_ptr_mut(&mut self) -> *mut T {
+        match self.is_inline() {
+            true => (self.inline_data_mut() as *mut [T]) as *mut T,
+            false => {
+                let self_heap = self.get_heap_mut();
+                self_heap.ptr.as_ptr() as *mut T
+            }
+        }
+    }
+
     pub fn heap_push(&mut self, elem: T) {
         if self.len() == self.capacity() {
             self.grow(self.len() + 1);
@@ -221,7 +231,8 @@ impl<T> Repr<T> {
         assert!(std::mem::size_of::<T>() != 0); // don't grow for zst
 
         let (new_cap, new_layout) = if self.capacity() == 0 {
-            (1, Layout::array::<T>(1).unwrap())
+            let new_cap = min_size.max(1);
+            (new_cap, Layout::array::<T>(new_cap).unwrap())
         } else {
             // Grow at 2x
             let new_cap = min_size.max(2 * self.capacity());
@@ -280,12 +291,10 @@ impl<T> Repr<T> {
 
         let new_layout = Layout::array::<T>(new_capacity).unwrap();
         let ptr = unsafe { std::alloc::alloc(new_layout) } as *mut T;
+        let data_ptr: *const [T] = old_self.inline_data();
 
-        for (i, elem) in old_self.inline_data()[0..len].iter().enumerate() {
-            debug_assert!(i < new_capacity);
-            unsafe {
-                std::ptr::copy(elem, ptr.add(i), 1);
-            }
+        unsafe {
+            std::ptr::copy_nonoverlapping(data_ptr as *const T, ptr as *mut T, len);
         }
 
         std::mem::forget(old_self);
@@ -347,7 +356,13 @@ impl<T> Repr<T> {
                 assert!(len * std::mem::size_of::<T>() <= INLINE_SIZE);
                 self.get_inline_mut().disc.set_len(len as u8)
             }
-            false => self.get_heap_mut().len = len,
+            false => {
+                #[cfg(target_pointer_width = "64")]
+                assert!(len * std::mem::size_of::<T>() < 0x7FFFFFFFFFFFFFFF);
+                #[cfg(target_pointer_width = "32")]
+                assert!(len * std::mem::size_of::<T>() < 0x7FFFFFFF);
+                self.get_heap_mut().len = len
+            }
         }
     }
 
