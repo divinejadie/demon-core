@@ -210,6 +210,36 @@ impl<T> Repr<T> {
         Some(data)
     }
 
+    pub fn insert(&mut self, idx: usize, element: T) {
+        let len = self.len();
+        assert!(len + 1 > idx, "index is out of range");
+
+        if len == self.capacity() {
+            self.grow(0);
+        }
+
+        let count = self.len() - idx;
+        let ptr: *mut T = self.as_ptr_mut();
+
+        if idx < len {
+            unsafe {
+                ptr::copy_nonoverlapping(ptr.add(idx), ptr.add(idx + 1), count);
+            }
+        } else if idx == len {
+            // no shift
+        } else {
+            unreachable!();
+        }
+
+        let dst_ptr: *mut T = unsafe { self.as_ptr_mut().add(idx) };
+
+        unsafe {
+            ptr::write(dst_ptr, element);
+        }
+
+        self.set_len(len + 1);
+    }
+
     pub fn as_ptr(&self) -> *const T {
         match self.is_inline() {
             true => (self.inline_data() as *const [T]) as *const T,

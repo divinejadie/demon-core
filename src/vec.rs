@@ -71,8 +71,10 @@ impl<T> Vector<T> {
         self.0.pop()
     }
 
-    // #[inline]
-    // pub fn insert(&mut self, element: T, idx: usize) {}
+    #[inline]
+    pub fn insert(&mut self, idx: usize, element: T) {
+        self.0.insert(idx, element);
+    }
 
     // #[inline]
     // pub fn remove(&mut self, idx: usize) -> Option<T> {}
