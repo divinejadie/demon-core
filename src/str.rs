@@ -8,12 +8,8 @@ pub struct Str(Repr<u8>);
 impl Str {
     pub fn new(string: &str) -> Self {
         match string.len() {
-            0..=INLINE_SIZE => Self(Repr::<u8>::new_inline_bytes(string.as_bytes())),
-            _ => {
-                let mut heap = Repr::<u8>::new_heap();
-                heap.extend(string.as_bytes());
-                Self(heap)
-            }
+            0..=INLINE_SIZE => Self(Repr::<u8>::new_inline(string.as_bytes())),
+            _ => Self(Repr::<u8>::from_heap(string.as_bytes())),
         }
     }
 
@@ -88,6 +84,7 @@ macro_rules! impl_eq {
 }
 
 impl_eq! { Str, str }
+impl_eq! {Str, String }
 impl_eq! { Str, &'a str }
 #[cfg(not(no_global_oom_handling))]
 impl_eq! { std::borrow::Cow< 'a,str>, Str }

@@ -1,4 +1,6 @@
 use std::{
+    marker::PhantomData,
+    mem::ManuallyDrop,
     ops::{Deref, DerefMut, Index, IndexMut},
     slice::SliceIndex,
 };
@@ -17,6 +19,11 @@ impl<T> Vector<T> {
     #[inline]
     pub fn new_heap() -> Self {
         Self(Repr::<T>::new_heap())
+    }
+
+    #[inline]
+    pub fn from_heap(data: &[T]) -> Self {
+        Self(Repr::<T>::from_heap(data))
     }
 
     #[inline]
@@ -79,12 +86,69 @@ impl<T> Vector<T> {
     pub fn is_inline(&self) -> bool {
         self.0.is_inline()
     }
+
+    #[inline]
+    pub fn extend_from_slice(&mut self, data: &[T]) {
+        self.0.extend_from_slice(data)
+    }
 }
 
 impl<T: std::fmt::Debug> std::fmt::Debug for Vector<T> {
     #[inline]
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Debug::fmt(&**self, f)
+    }
+}
+
+pub struct IntoIter<T> {
+    pub(super) phantom: PhantomData<T>,
+    pub(super) ptr: *const T,
+    pub(super) end: *const T, // If T is a ZST, this is actually ptr+len. This encoding is picked so that
+                              // ptr == end is a quick test for the Iterator being empty, that works
+                              // for both ZST and non-ZST.
+}
+
+impl<T> Iterator for IntoIter<T> {
+    type Item = T;
+
+    #[inline]
+    fn next(&mut self) -> Option<T> {
+        if self.ptr == self.end {
+            None
+        } else if std::mem::size_of::<T>() == 0 {
+            self.end = self.end.wrapping_sub(1);
+
+            // Make up a value of this ZST.
+            Some(unsafe { std::mem::zeroed() })
+        } else {
+            let old = self.ptr;
+            self.ptr = unsafe { self.ptr.add(1) };
+
+            Some(unsafe { std::ptr::read(old) })
+        }
+    }
+}
+
+impl<T> IntoIterator for Vector<T> {
+    type Item = T;
+
+    type IntoIter = IntoIter<T>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        unsafe {
+            let mut me = ManuallyDrop::new(self);
+            let begin = me.as_mut_ptr();
+            let end = if std::mem::size_of::<T>() == 0 {
+                begin.wrapping_add(me.len())
+            } else {
+                begin.add(me.len()) as *const T
+            };
+            IntoIter {
+                phantom: PhantomData,
+                ptr: begin,
+                end,
+            }
+        }
     }
 }
 
@@ -148,11 +212,12 @@ impl<T> Deref for Vector<T> {
 impl<T> Extend<T> for Vector<T> {
     #[inline]
     fn extend<I: IntoIterator<Item = T>>(&mut self, iter: I) {
-        self.0.extend(iter)
+        Extend::extend(&mut self.0, iter)
     }
 }
 
-impl<'a, T: Clone> Extend<&'a T> for Vector<T> {
+impl<'a, T: Copy> Extend<&'a T> for Vector<T> {
+    #[inline]
     fn extend<I: IntoIterator<Item = &'a T>>(&mut self, iter: I) {
         self.0.extend(iter)
     }
