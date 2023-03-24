@@ -399,28 +399,28 @@ impl<T> Repr<T> {
 
     #[inline]
     fn get_inline(&self) -> &Inline<T> {
-        assert!(self.is_inline());
+        debug_assert!(self.is_inline());
 
         unsafe { &self.inline }
     }
 
     #[inline]
     fn get_heap(&self) -> &Heap<T> {
-        assert!(!self.is_inline());
+        debug_assert!(!self.is_inline());
 
         unsafe { &self.heap }
     }
 
     #[inline]
     fn get_inline_mut(&mut self) -> &mut Inline<T> {
-        assert!(self.is_inline());
+        debug_assert!(self.is_inline());
 
         unsafe { &mut self.inline }
     }
 
     #[inline]
     fn get_heap_mut(&mut self) -> &mut Heap<T> {
-        assert!(!self.is_inline());
+        debug_assert!(!self.is_inline());
 
         unsafe { &mut self.heap }
     }
