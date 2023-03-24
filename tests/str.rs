@@ -1,4 +1,5 @@
 use demon_core::Str;
+use proptest::prelude::*;
 
 #[test]
 fn len_inline() {
@@ -37,4 +38,12 @@ fn bytes_mut_inline() {
     assert_eq!(str.as_bytes(), &[240, 159, 146, 151]);
     assert_eq!(str.len(), 4);
     assert_eq!(str.capacity(), 23);
+}
+
+proptest! {
+    #[test]
+    fn proptest(text in "\\PC*") {
+        let str = Str::new(&text);
+        assert_eq!(&str, &text);
+    }
 }
