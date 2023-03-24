@@ -50,11 +50,11 @@ impl<T> Drop for Repr<T> {
     }
 }
 
-impl<'a, T: Clone> Extend<&'a T> for Repr<T> {
+impl<'a, T: Copy> Extend<&'a T> for Repr<T> {
     fn extend<I: IntoIterator<Item = &'a T>>(&mut self, iter: I) {
         let iter = iter.into_iter();
         for elem in iter {
-            self.push(elem.clone());
+            self.push(*elem);
         }
     }
 }
@@ -62,44 +62,6 @@ impl<'a, T: Clone> Extend<&'a T> for Repr<T> {
 impl<T> Extend<T> for Repr<T> {
     fn extend<I: IntoIterator<Item = T>>(&mut self, iter: I) {
         let iter = iter.into_iter();
-        let data = iter.collect::<Vec<T>>();
-        let src_ptr = data.as_ptr();
-
-        let new_size = self.len() + data.len();
-        if new_size >= self.capacity() {
-            self.grow(new_size);
-        }
-
-        match self.is_inline() {
-            true => {
-                let len = self.len();
-                for (i, item) in data.into_iter().enumerate() {
-                    self.inline_data_mut()[i + len] = item;
-                }
-                self.set_len(new_size);
-            }
-            false => {
-                let self_heap = self.get_heap_mut();
-                // ptr to end of data
-                let ptr = unsafe { self_heap.ptr.as_ptr().add(self_heap.len) };
-                unsafe {
-                    std::ptr::copy_nonoverlapping(src_ptr, ptr, data.len());
-                }
-                self_heap.len = new_size;
-
-                // Dealloc other data without calling destructor
-                let layout =
-                    Layout::from_size_align(std::mem::size_of::<T>(), std::mem::align_of::<T>())
-                        .unwrap();
-                unsafe {
-                    std::alloc::dealloc(src_ptr as *mut u8, layout);
-                }
-                std::mem::forget(data);
-            }
-        }
-    }
-}
-
 // separate function for Str to avoid miri errors i dont understand 👽
 impl Repr<u8> {
     pub fn new_inline_bytes(data: &[u8]) -> Self {
