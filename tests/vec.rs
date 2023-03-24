@@ -63,15 +63,19 @@ fn push() {
 #[test]
 fn extend() {
     let mut vec = Vector::<u32>::new();
-    vec.extend(&[0, 1, 2, 3, 4]);
-    assert_eq!(vec.len(), 5);
+    vec.extend(&[0, 1, 2, 3]);
+    assert_eq!(vec.len(), 4);
     assert_eq!(vec.is_inline(), true);
-    assert_eq!(vec, &[0, 1, 2, 3, 4]);
+    assert_eq!(vec, &[0, 1, 2, 3]);
 
     let mut vec = Vector::<u32>::new_heap();
     vec.extend(&[0, 1, 2, 3, 4]);
     assert_eq!(vec.len(), 5);
     assert_eq!(vec.is_inline(), false);
+    assert_eq!(vec, &[0, 1, 2, 3, 4]);
+
+    let mut vec = Vector::<u32>::new();
+    vec.extend_from_slice(&[0, 1, 2, 3, 4]);
     assert_eq!(vec, &[0, 1, 2, 3, 4]);
 }
 
@@ -109,6 +113,13 @@ fn grow() {
         vec,
         &[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23]
     )
+}
+
+#[test]
+fn from() {
+    let vec = Vector::<i32>::from_heap(&[0, 2, 3, 4]);
+    assert_eq!(vec.is_inline(), false);
+    assert_eq!(vec, &[0, 2, 3, 4]);
 }
 
 #[test]
