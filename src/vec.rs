@@ -100,6 +100,16 @@ impl<T> Vector<T> {
     pub fn extend_from_slice(&mut self, data: &[T]) {
         self.0.extend_from_slice(data)
     }
+
+    #[inline]
+    pub fn iter(&self) -> impl Iterator<Item = &T> {
+        self.as_slice().iter()
+    }
+
+    #[inline]
+    pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut T> {
+        self.as_slice_mut().iter_mut()
+    }
 }
 
 impl<T: fmt::Debug> fmt::Debug for Vector<T> {
