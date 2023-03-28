@@ -166,10 +166,9 @@ impl<T> Repr<T> {
 
     pub fn extend_from_slice(&mut self, data: &[T]) {
         let new_len = self.len() + data.len();
-        let new_size = new_len * mem::size_of::<T>();
 
-        if new_size >= self.capacity() {
-            self.grow(new_size);
+        if new_len > self.capacity() {
+            self.grow(new_len);
         }
 
         let ptr: *mut T = self.as_ptr_mut();
@@ -322,13 +321,19 @@ impl<T> Repr<T> {
         );
 
         let new_ptr = if self.capacity() == 0 {
-            // zst
-            unsafe { alloc(new_layout) }
-        } else {
             match self.is_inline() {
                 true => {
                     // grow from stack to heap
                     debug_assert!(new_cap * mem::size_of::<T>() >= INLINE_SIZE);
+                    self.inline_to_heap(new_cap)
+                }
+                false => unsafe { alloc(new_layout) },
+            }
+        } else {
+            match self.is_inline() {
+                true => {
+                    // grow from stack to heap
+                    debug_assert!(new_cap * mem::size_of::<T>() > INLINE_SIZE);
                     self.inline_to_heap(new_cap)
                 }
                 false => {
@@ -411,7 +416,7 @@ impl<T> Repr<T> {
     #[inline]
     pub fn capacity(&self) -> usize {
         match self.is_inline() {
-            true => INLINE_SIZE,
+            true => INLINE_SIZE / mem::size_of::<T>(),
             false => self.get_heap().capacity,
         }
     }
