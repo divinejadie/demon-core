@@ -219,3 +219,16 @@ fn remove() {
     vec.remove(2);
     assert_eq!(vec, &[1, 2]);
 }
+
+#[test]
+fn iter() {
+    let mut vec = Vector::<usize>::new();
+    vec.extend_from_slice(&[0, 1, 2, 3, 4, 5]);
+    vec.iter().enumerate().for_each(|(i, x)| assert_eq!(i, *x));
+
+    let mut vec = Vector::<usize>::new();
+    vec.extend_from_slice(&[0, 1, 2, 3, 4, 5]);
+    vec.into_iter()
+        .enumerate()
+        .for_each(|(i, x)| assert_eq!(i, x));
+}
