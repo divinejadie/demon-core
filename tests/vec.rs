@@ -63,6 +63,11 @@ fn push() {
 #[test]
 #[cfg(target_pointer_width = "64")]
 fn extend() {
+    #[derive(Debug, PartialEq)]
+    struct TestStruct {
+        inner: [f32; 8],
+    }
+
     let mut vec = Vector::<u32>::new();
     vec.extend(&[0, 1, 2, 3]);
     assert_eq!(vec.len(), 4);
@@ -78,6 +83,14 @@ fn extend() {
     let mut vec = Vector::<u32>::new();
     vec.extend_from_slice(&[0, 1, 2, 3, 4]);
     assert_eq!(vec, &[0, 1, 2, 3, 4]);
+
+    let mut vec1 = Vector::<u32>::new();
+    vec1.extend_from_slice(&[]);
+    assert_eq!(vec1, &[]);
+
+    let mut vec1 = Vector::<TestStruct>::new();
+    vec1.extend_from_slice(&[TestStruct { inner: [0.0; 8] }]);
+    assert_eq!(vec1, &[TestStruct { inner: [0.0; 8] }]);
 }
 
 #[test]
