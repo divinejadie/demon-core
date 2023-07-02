@@ -1,7 +1,7 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 
 fn demon_core_str(string: &str) -> demon_core::Str {
-    demon_core::Str::new(string)
+    demon_core::Str::from(string)
 }
 
 fn std_str(string: &str) -> String {
@@ -28,7 +28,7 @@ fn criterion_benchmark(c: &mut Criterion) {
     });
 
     c.bench_function("demon core Str, len short", |b| {
-        b.iter(|| demon_core_len(black_box(demon_core::Str::new("valid utf-8"))))
+        b.iter(|| demon_core_len(black_box(demon_core::Str::from("valid utf-8"))))
     });
     c.bench_function("std String len", |b| {
         b.iter(|| std_len(black_box(String::from("valid utf-8"))))
