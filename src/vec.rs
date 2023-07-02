@@ -110,6 +110,20 @@ impl<T> Vector<T> {
     pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut T> {
         self.as_slice_mut().iter_mut()
     }
+
+    #[inline]
+    pub fn drain(&mut self) -> Drain<T> {
+        unsafe {
+            let start = self.0.as_ptr_mut();
+            let end = start.add(self.len());
+
+            Drain {
+                phantom: PhantomData,
+                start,
+                end,
+            }
+        }
+    }
 }
 
 impl<T: fmt::Debug> fmt::Debug for Vector<T> {
@@ -190,14 +204,60 @@ impl<T> IntoIterator for Vector<T> {
         }
     }
 }
+
+pub struct Drain<'a, T: 'a> {
+    phantom: PhantomData<&'a mut Vector<T>>,
+    start: *const T,
+    end: *const T,
+}
+
+impl<'a, T> Iterator for Drain<'a, T> {
+    type Item = T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.start == self.end {
+            None
+        } else {
+            unsafe {
+                if mem::size_of::<T>() == 0 {
+                    self.end = self.end.wrapping_sub(1);
+                    Some(mem::zeroed())
+                } else {
+                    let old_ptr = self.start;
+                    self.start = self.start.add(1);
+                    Some(ptr::read(old_ptr))
+                }
             }
         }
     }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let elem_size = mem::size_of::<T>();
+        let len =
+            (self.end as usize - self.start as usize) / if elem_size == 0 { 1 } else { elem_size };
+        (len, Some(len))
+    }
+}
+
+impl<'a, T> DoubleEndedIterator for Drain<'a, T> {
+    fn next_back(&mut self) -> Option<Self::Item> {
+        if self.start == self.end {
+            None
+        } else {
+            unsafe {
+                self.end = self.end.wrapping_sub(1);
+                Some(ptr::read(self.end))
             }
         }
     }
 }
 
+impl<'a, T> ExactSizeIterator for Drain<'a, T> {}
+
+impl<'a, T> Drop for Drain<'a, T> {
+    fn drop(&mut self) {
+        for _ in self {}
+    }
 }
 
 impl<T> FromIterator<T> for Vector<T> {
