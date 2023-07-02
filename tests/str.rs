@@ -11,6 +11,15 @@ fn new() {
     assert_eq!(s.len(), 0);
 }
 
+
+#[test]
+fn push_char() {
+    let mut s = Str::from("tes");
+    s.push('t');
+
+    assert_eq!(&s, "test");
+    assert_eq!(s.len(), 4);
+}
 fn len_inline() {
     let primitive = "test string";
 

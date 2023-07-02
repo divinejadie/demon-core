@@ -21,6 +21,13 @@ impl Str {
     }
 
     #[inline]
+    pub fn push(&mut self, ch: char) {
+        match ch.len_utf8() {
+            1 => self.0.push(ch as u8),
+            _ => self.0.extend(ch.encode_utf8(&mut [0; 4]).as_bytes()),
+        };
+    }
+
     pub fn as_bytes(&self) -> &[u8] {
         self.0.bytes()
     }
