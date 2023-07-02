@@ -38,6 +38,12 @@ impl Str {
         self.0.pop().map(|byte| byte as char)
     }
 
+    #[inline]
+    pub fn clear(&mut self) {
+        self.0.set_len(0);
+    }
+
+    #[inline]
     pub fn as_bytes(&self) -> &[u8] {
         self.0.bytes()
     }

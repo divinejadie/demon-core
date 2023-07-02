@@ -38,6 +38,17 @@ fn pop_char() {
     assert_eq!(s.pop(), Some('t'));
 }
 
+#[test]
+fn clear() {
+    let mut s = Str::from("raspberry");
+    let cap = s.capacity();
+    s.clear();
+    assert_eq!(&s, "");
+    assert_eq!(s.len(), 0);
+    assert_eq!(s.capacity(), cap);
+}
+
+#[test]
 fn len_inline() {
     let primitive = "test string";
 
