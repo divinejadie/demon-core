@@ -364,7 +364,7 @@ impl<T> Repr<T> {
 
         let old_self: Self = mem::replace(self, new_self);
 
-        let mut self_heap = self.get_heap_mut();
+        let self_heap = self.get_heap_mut();
 
         self_heap.len = len;
         self_heap.capacity = new_capacity; // overwritten again later
