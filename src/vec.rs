@@ -2,7 +2,7 @@ extern crate alloc;
 
 use core::{
     marker::PhantomData,
-    mem::{self, ManuallyDrop},
+    mem,
     ops::{Deref, DerefMut, Index, IndexMut},
     ptr,
     slice::SliceIndex,
@@ -119,12 +119,29 @@ impl<T: fmt::Debug> fmt::Debug for Vector<T> {
     }
 }
 
+impl<T> Drop for Vector<T> {
+    fn drop(&mut self) {
+        while let Some(_) = self.pop() {}
+    }
+}
+
+impl<T> DoubleEndedIterator for IntoIter<T> {
+    fn next_back(&mut self) -> Option<Self::Item> {
+        if self.start == self.end {
+            None
+        } else {
+            unsafe {
+                self.end -= 1;
+                Some(ptr::read(self.vec.0.as_ptr_mut().add(self.end)))
+            }
+        }
+    }
+}
+
 pub struct IntoIter<T> {
-    pub(super) phantom: PhantomData<T>,
-    pub(super) ptr: *const T,
-    pub(super) end: *const T, // If T is a ZST, this is actually ptr+len. This encoding is picked so that
-                              // ptr == end is a quick test for the Iterator being empty, that works
-                              // for both ZST and non-ZST.
+    vec: Vector<T>,
+    start: usize,
+    end: usize,
 }
 
 impl<T> Iterator for IntoIter<T> {
@@ -132,43 +149,55 @@ impl<T> Iterator for IntoIter<T> {
 
     #[inline]
     fn next(&mut self) -> Option<T> {
-        if self.ptr == self.end {
+        if self.start == self.end {
             None
-        } else if mem::size_of::<T>() == 0 {
-            self.end = self.end.wrapping_sub(1);
-
-            // Make up a value of this ZST.
-            Some(unsafe { mem::zeroed() })
         } else {
-            let old = self.ptr;
-            self.ptr = unsafe { self.ptr.add(1) };
-
-            Some(unsafe { ptr::read(old) })
+            let next = self.start;
+            self.start += 1;
+            Some(unsafe { ptr::read(self.vec.as_mut_ptr().add(next)) })
         }
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let elem_size = mem::size_of::<T>();
+        let len = if elem_size == 0 { 1 } else { elem_size };
+        (len, Some(len))
+    }
+}
+
+impl<T> ExactSizeIterator for IntoIter<T> {
+    fn len(&self) -> usize {
+        self.vec.len()
+    }
+}
+
+impl<T> Drop for IntoIter<T> {
+    fn drop(&mut self) {
+        for _ in self {}
     }
 }
 
 impl<T> IntoIterator for Vector<T> {
     type Item = T;
-
     type IntoIter = IntoIter<T>;
 
     fn into_iter(self) -> Self::IntoIter {
-        unsafe {
-            let mut me = ManuallyDrop::new(self);
-            let begin = me.as_mut_ptr();
-            let end = if mem::size_of::<T>() == 0 {
-                begin.wrapping_add(me.len())
-            } else {
-                begin.add(me.len()) as *const T
-            };
-            IntoIter {
-                phantom: PhantomData,
-                ptr: begin,
-                end,
+        IntoIter {
+            end: self.len(),
+            vec: self,
+            start: 0,
+        }
+    }
+}
             }
         }
     }
+            }
+        }
+    }
+}
+
 }
 
 impl<T> FromIterator<T> for Vector<T> {

@@ -226,9 +226,41 @@ fn iter() {
     vec.extend_from_slice(&[0, 1, 2, 3, 4, 5]);
     vec.iter().enumerate().for_each(|(i, x)| assert_eq!(i, *x));
 
+    let mut vec = Vector::<u32>::new();
+    vec.extend_from_slice(&[0, 1]);
+    vec.iter()
+        .enumerate()
+        .for_each(|(i, x)| assert_eq!(i as u32, *x));
+}
+
+#[test]
+fn into_iter() {
+    let mut vec = Vector::<u32>::new();
+    vec.extend_from_slice(&[0, 1]);
+    vec.into_iter()
+        .enumerate()
+        .for_each(|(i, x)| assert_eq!(i as u32, x));
+
     let mut vec = Vector::<usize>::new();
     vec.extend_from_slice(&[0, 1, 2, 3, 4, 5]);
     vec.into_iter()
         .enumerate()
+        .for_each(|(i, x)| assert_eq!(i, x));
+}
+#[test]
+#[test]
+fn into_iter_double_ended() {
+    let mut vec = Vector::<u32>::new();
+    vec.extend_from_slice(&[0, 1]);
+    vec.into_iter()
+        .enumerate()
+        .rev()
+        .for_each(|(i, x)| assert_eq!(i as u32, x));
+
+    let mut vec = Vector::<usize>::new();
+    vec.extend_from_slice(&[0, 1, 2, 3, 4, 5]);
+    vec.into_iter()
+        .enumerate()
+        .rev()
         .for_each(|(i, x)| assert_eq!(i, x));
 }
