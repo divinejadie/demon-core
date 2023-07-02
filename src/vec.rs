@@ -139,6 +139,15 @@ impl<T> Drop for Vector<T> {
     }
 }
 
+unsafe impl<T: Send> Send for Vector<T> {}
+unsafe impl<T: Sync> Sync for Vector<T> {}
+
+unsafe impl<T: Send> Send for IntoIter<T> {}
+unsafe impl<T: Sync> Sync for IntoIter<T> {}
+
+unsafe impl<'a, T: Send> Send for Drain<'a, T> {}
+unsafe impl<'a, T: Sync> Sync for Drain<'a, T> {}
+
 impl<T> DoubleEndedIterator for IntoIter<T> {
     fn next_back(&mut self) -> Option<Self::Item> {
         if self.start == self.end {
