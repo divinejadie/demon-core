@@ -28,6 +28,16 @@ fn push_char() {
     assert_eq!(&s, "test");
     assert_eq!(s.len(), 4);
 }
+
+#[test]
+fn pop_char() {
+    let mut s = Str::from("test");
+    assert_eq!(s.pop(), Some('t'));
+    assert_eq!(s.pop(), Some('s'));
+    assert_eq!(s.pop(), Some('e'));
+    assert_eq!(s.pop(), Some('t'));
+}
+
 fn len_inline() {
     let primitive = "test string";
 

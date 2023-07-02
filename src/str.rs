@@ -33,6 +33,11 @@ impl Str {
         self.0.extend(string.as_bytes());
     }
 
+    #[inline]
+    pub fn pop(&mut self) -> Option<char> {
+        self.0.pop().map(|byte| byte as char)
+    }
+
     pub fn as_bytes(&self) -> &[u8] {
         self.0.bytes()
     }
