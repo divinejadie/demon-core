@@ -28,6 +28,11 @@ impl Str {
         };
     }
 
+    #[inline]
+    pub fn push_str(&mut self, string: &str) {
+        self.0.extend(string.as_bytes());
+    }
+
     pub fn as_bytes(&self) -> &[u8] {
         self.0.bytes()
     }

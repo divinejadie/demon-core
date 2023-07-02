@@ -11,6 +11,14 @@ fn new() {
     assert_eq!(s.len(), 0);
 }
 
+#[test]
+fn push_str() {
+    let mut s = Str::from("test");
+    s.push_str(" string");
+
+    assert_eq!(&s, "test string");
+    assert_eq!(s.len(), 11);
+}
 
 #[test]
 fn push_char() {
