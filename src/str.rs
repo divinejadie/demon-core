@@ -8,6 +8,11 @@ use core::ops::Deref;
 pub struct Str(Repr<u8>);
 
 impl Str {
+    #[inline]
+    pub fn new() -> Self {
+        Self(Repr::<u8>::new_inline(&[]))
+    }
+
     pub fn from(string: &str) -> Self {
         match string.len() {
             0..=INLINE_SIZE => Self(Repr::<u8>::new_inline(string.as_bytes())),

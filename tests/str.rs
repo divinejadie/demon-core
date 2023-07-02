@@ -4,6 +4,13 @@ use demon_core::Str;
 use proptest::prelude::*;
 
 #[test]
+fn new() {
+    let s = Str::new();
+
+    assert_eq!(&s, "");
+    assert_eq!(s.len(), 0);
+}
+
 fn len_inline() {
     let primitive = "test string";
 
