@@ -70,6 +70,20 @@ impl<T> Extend<T> for Repr<T> {
     }
 }
 
+impl<T: Clone> Repr<T> {
+    pub fn extend_from_slice(&mut self, data: &[T]) {
+        let new_len = self.len() + data.len();
+
+        if new_len > self.capacity() {
+            self.grow(new_len);
+        }
+
+        for elem in data {
+            self.push(elem.clone());
+        }
+    }
+}
+
 impl<T> Repr<T> {
     pub fn new_inline(data: &[T]) -> Self {
         let len = data.len();
@@ -162,20 +176,6 @@ impl<T> Repr<T> {
                 &mut *ptr::slice_from_raw_parts_mut(self.get_heap().ptr.as_ptr(), len)
             },
         }
-    }
-
-    pub fn extend_from_slice(&mut self, data: &[T]) {
-        let new_len = self.len() + data.len();
-
-        if new_len > self.capacity() {
-            self.grow(new_len);
-        }
-
-        let ptr: *mut T = self.as_ptr_mut();
-        let data_ptr = data as *const [T];
-        unsafe { ptr::copy_nonoverlapping(data_ptr as *const T, ptr, data.len()) };
-
-        self.set_len(new_len);
     }
 
     pub fn push(&mut self, elem: T) {
@@ -486,7 +486,7 @@ impl<T> Repr<T> {
     }
 
     #[inline]
-    fn get_heap_mut(&mut self) -> &mut Heap<T> {
+    pub(crate) fn get_heap_mut(&mut self) -> &mut Heap<T> {
         debug_assert!(!self.is_inline());
 
         unsafe { &mut self.heap }

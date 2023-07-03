@@ -63,7 +63,7 @@ fn push() {
 #[test]
 #[cfg(target_pointer_width = "64")]
 fn extend() {
-    #[derive(Debug, PartialEq)]
+    #[derive(Clone, Debug, PartialEq)]
     struct TestStruct {
         inner: [f32; 8],
     }
@@ -293,4 +293,39 @@ fn into_iter_double_ended() {
         .enumerate()
         .rev()
         .for_each(|(i, x)| assert_eq!(i, x));
+}
+
+#[test]
+fn from_slice() {
+    let vec: Vector<_> = [0, 1].into();
+    assert_eq!(&vec, &[0, 1]);
+    assert_eq!(vec.len(), 2);
+
+    let vec: Vector<_> = [0, 1, 2, 3].into();
+    assert_eq!(&vec, &[0, 1, 2, 3]);
+    assert_eq!(vec.len(), 4);
+}
+
+#[test]
+fn from_vec() {
+    let vec: Vector<_> = vec![0, 1].into();
+    assert_eq!(&vec, &[0, 1]);
+    assert_eq!(vec.len(), 2);
+
+    let vec: Vector<_> = vec![0, 1, 2, 3].into();
+    assert_eq!(&vec, &[0, 1, 2, 3]);
+    assert_eq!(vec.len(), 4);
+}
+
+#[test]
+fn clone() {
+    let mut vec: Vector<_> = vec![0, 1, 2, 3].into();
+    let cl = vec.clone();
+
+    assert_eq!(&cl, &[0, 1, 2, 3]);
+
+    vec[0] = 9;
+
+    assert_eq!(&cl, &[0, 1, 2, 3]);
+    assert_eq!(&vec, &[9, 1, 2, 3]);
 }

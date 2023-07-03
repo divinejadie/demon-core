@@ -97,11 +97,6 @@ impl<T> Vector<T> {
     }
 
     #[inline]
-    pub fn extend_from_slice(&mut self, data: &[T]) {
-        self.0.extend_from_slice(data)
-    }
-
-    #[inline]
     pub fn iter(&self) -> impl Iterator<Item = &T> {
         self.as_slice().iter()
     }
@@ -126,10 +121,25 @@ impl<T> Vector<T> {
     }
 }
 
+impl<T: Clone> Vector<T> {
+    #[inline]
+    pub fn extend_from_slice(&mut self, data: &[T]) {
+        self.0.extend_from_slice(data)
+    }
+}
+
 impl<T: fmt::Debug> fmt::Debug for Vector<T> {
     #[inline]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Debug::fmt(&**self, f)
+    }
+}
+
+impl<T: Clone> Clone for Vector<T> {
+    fn clone(&self) -> Self {
+        let mut vec = Vector::<T>::new();
+        vec.extend_from_slice(&self);
+        vec
     }
 }
 
@@ -147,6 +157,44 @@ unsafe impl<T: Sync> Sync for IntoIter<T> {}
 
 unsafe impl<'a, T: Send> Send for Drain<'a, T> {}
 unsafe impl<'a, T: Sync> Sync for Drain<'a, T> {}
+
+impl<T: Clone> From<&[T]> for Vector<T> {
+    fn from(value: &[T]) -> Self {
+        let mut vec = Vector::<T>::new();
+        vec.extend_from_slice(value);
+        vec
+    }
+}
+
+impl<T, const N: usize> From<[T; N]> for Vector<T> {
+    fn from(value: [T; N]) -> Self {
+        let mut vec = Vector::<T>::new();
+        vec.extend(value);
+        vec
+    }
+}
+impl<T: Clone> From<&mut [T]> for Vector<T> {
+    fn from(value: &mut [T]) -> Self {
+        let mut vec = Vector::new();
+        vec.extend_from_slice(value);
+        vec
+    }
+}
+
+impl<T> From<alloc::vec::Vec<T>> for Vector<T> {
+    fn from(mut value: alloc::vec::Vec<T>) -> Self {
+        let ptr = value.as_mut_ptr();
+        let mut vec = Vector::new_heap();
+
+        vec.0.get_heap_mut().ptr = ptr::NonNull::new(ptr).unwrap();
+        vec.0.set_len(value.len());
+        vec.0.get_heap_mut().capacity = value.capacity();
+
+        mem::forget(value);
+
+        vec
+    }
+}
 
 impl<T> DoubleEndedIterator for IntoIter<T> {
     fn next_back(&mut self) -> Option<Self::Item> {
@@ -286,6 +334,37 @@ where
         self[..] == other[..]
     }
 }
+
+impl<T, U, const N: usize> PartialEq<&[U; N]> for Vector<T>
+where
+    T: PartialEq<U>,
+{
+    #[inline]
+    fn eq(&self, other: &&[U; N]) -> bool {
+        self[..] == other[..]
+    }
+}
+
+impl<T, U, const N: usize> PartialEq<[U; N]> for Vector<T>
+where
+    T: PartialEq<U>,
+{
+    #[inline]
+    fn eq(&self, other: &[U; N]) -> bool {
+        self[..] == other[..]
+    }
+}
+impl<T, U> PartialEq<Vector<U>> for Vector<T>
+where
+    T: PartialEq<U>,
+{
+    #[inline]
+    fn eq(&self, other: &Vector<U>) -> bool {
+        self[..] == other[..]
+    }
+}
+
+impl<T: Eq> Eq for Vector<T> {}
 
 impl<T, I: SliceIndex<[T]>> Index<I> for Vector<T> {
     type Output = I::Output;
