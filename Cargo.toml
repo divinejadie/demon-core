@@ -11,8 +11,8 @@ license = "MPL-2.0"
 [dependencies]
 
 [dev-dependencies]
-criterion = "0.3"
-proptest = "1.1.0"
+criterion = "0.5"
+proptest = "1.2"
 
 [[bench]]
 name = "std_compare"
