@@ -74,6 +74,12 @@ impl Str {
     }
 }
 
+impl Clone for Str {
+    fn clone(&self) -> Self {
+        Str::from(&self)
+    }
+}
+
 impl PartialEq for Str {
     #[inline]
     fn eq(&self, other: &Self) -> bool {

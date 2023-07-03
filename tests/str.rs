@@ -108,3 +108,13 @@ proptest! {
         assert_eq!(&str, &text);
     }
 }
+
+#[test]
+fn clone() {
+    let mut s = Str::from("aaa");
+    let c = s.clone();
+    _ = s.pop();
+
+    assert_eq!(s, "aa");
+    assert_eq!(c, "aaa");
+}
