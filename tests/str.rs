@@ -118,3 +118,10 @@ fn clone() {
     assert_eq!(s, "aa");
     assert_eq!(c, "aaa");
 }
+
+#[test]
+fn display() {
+    let s = Str::from("Test String");
+    assert_eq!(&format!("{s}"), "Test String");
+    assert_eq!(format!("{s}"), format!("{}", "Test String"));
+}

@@ -147,3 +147,9 @@ impl core::fmt::Debug for Str {
         core::fmt::Debug::fmt(&**self, f)
     }
 }
+
+impl core::fmt::Display for Str {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        core::fmt::Display::fmt(self.as_str(), f)
+    }
+}
