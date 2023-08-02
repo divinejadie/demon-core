@@ -182,16 +182,11 @@ impl<T: Clone> From<&mut [T]> for Vector<T> {
 }
 
 impl<T> From<alloc::vec::Vec<T>> for Vector<T> {
-    fn from(mut value: alloc::vec::Vec<T>) -> Self {
-        let ptr = value.as_mut_ptr();
-        let mut vec = Vector::new_heap();
-
-        vec.0.get_heap_mut().ptr = ptr::NonNull::new(ptr).unwrap();
-        vec.0.set_len(value.len());
-        vec.0.get_heap_mut().capacity = value.capacity();
-
-        mem::forget(value);
-
+    fn from(value: alloc::vec::Vec<T>) -> Self {
+        let mut vec = Vector::new();
+        for elem in value {
+            vec.push(elem)
+        }
         vec
     }
 }

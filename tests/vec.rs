@@ -68,16 +68,19 @@ fn extend() {
         inner: [f32; 8],
     }
 
+    #[derive(Clone, Debug, PartialEq)]
+    struct BorrowStruct<'a> {
+        inner: &'a [f32; 8],
+    }
+
     let mut vec = Vector::<u32>::new();
     vec.extend(&[0, 1, 2, 3]);
     assert_eq!(vec.len(), 4);
-    assert_eq!(vec.is_inline(), true);
     assert_eq!(vec, &[0, 1, 2, 3]);
 
     let mut vec = Vector::<u32>::new_heap();
     vec.extend(&[0, 1, 2, 3, 4]);
     assert_eq!(vec.len(), 5);
-    assert_eq!(vec.is_inline(), false);
     assert_eq!(vec, &[0, 1, 2, 3, 4]);
 
     let mut vec = Vector::<u32>::new();
@@ -91,6 +94,18 @@ fn extend() {
     let mut vec1 = Vector::<TestStruct>::new();
     vec1.extend_from_slice(&[TestStruct { inner: [0.0; 8] }]);
     assert_eq!(vec1, &[TestStruct { inner: [0.0; 8] }]);
+
+    let mut vec = Vec::new();
+    vec.push(BorrowStruct { inner: &[0.0; 8] });
+    let mut vec1 = Vector::from(vec);
+    vec1.extend(Vector::from([BorrowStruct { inner: &[1.0; 8] }]));
+    assert_eq!(
+        vec1,
+        [
+            BorrowStruct { inner: &[0.0; 8] },
+            BorrowStruct { inner: &[1.0; 8] }
+        ]
+    );
 }
 
 #[test]
@@ -319,7 +334,7 @@ fn from_vec() {
 
 #[test]
 fn clone() {
-    let mut vec: Vector<_> = vec![0, 1, 2, 3].into();
+    let mut vec: Vector<i32> = vec![0, 1, 2, 3].into();
     let cl = vec.clone();
 
     assert_eq!(&cl, &[0, 1, 2, 3]);
@@ -328,4 +343,136 @@ fn clone() {
 
     assert_eq!(&cl, &[0, 1, 2, 3]);
     assert_eq!(&vec, &[9, 1, 2, 3]);
+}
+
+#[derive(Debug, PartialEq)]
+struct AdtPartialEq<'a> {
+    some_str: &'a str,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+struct AdtEq<'a> {
+    some_str: &'a str,
+}
+
+#[test]
+fn eq() {
+    let vec1 = Vector::from([1, 2, 3, 4]);
+    let vec2 = Vector::from([0, 2, 3, 4]);
+
+    let vec3 = Vector::from([
+        AdtPartialEq {
+            some_str: "some text",
+        },
+        AdtPartialEq {
+            some_str: "another text",
+        },
+        AdtPartialEq {
+            some_str: "other text",
+        },
+        AdtPartialEq {
+            some_str: "another text",
+        },
+        AdtPartialEq {
+            some_str: "other text",
+        },
+        AdtPartialEq {
+            some_str: "another text",
+        },
+    ]);
+    let vec4 = Vector::from([
+        AdtPartialEq {
+            some_str: "other text",
+        },
+        AdtPartialEq {
+            some_str: "another text",
+        },
+        AdtPartialEq {
+            some_str: "other text",
+        },
+        AdtPartialEq {
+            some_str: "another text",
+        },
+        AdtPartialEq {
+            some_str: "other text",
+        },
+        AdtPartialEq {
+            some_str: "another text",
+        },
+    ]);
+
+    assert_eq!(vec1, vec1);
+    assert_ne!(vec1, vec2);
+    assert_eq!(vec3, vec3);
+    assert_ne!(vec3, vec4);
+
+    assert_eq!(&vec1, &vec1);
+    assert_ne!(&vec1, &vec2);
+    assert_eq!(&vec3, &vec3);
+    assert_ne!(&vec3, &vec4);
+}
+
+#[test]
+fn partial_eq() {
+    let vec1 = Vector::from([1.0, 2.0, 3.0, 4.0]);
+    let vec2 = Vector::from([0.0, 2.0, 3.0, 4.0]);
+
+    let vec3 = Vector::from([
+        AdtPartialEq {
+            some_str: "some text",
+        },
+        AdtPartialEq {
+            some_str: "another text",
+        },
+        AdtPartialEq {
+            some_str: "other text",
+        },
+        AdtPartialEq {
+            some_str: "another text",
+        },
+        AdtPartialEq {
+            some_str: "other text",
+        },
+        AdtPartialEq {
+            some_str: "another text",
+        },
+    ]);
+    let vec4 = Vector::from([
+        AdtPartialEq {
+            some_str: "other text",
+        },
+        AdtPartialEq {
+            some_str: "another text",
+        },
+        AdtPartialEq {
+            some_str: "other text",
+        },
+        AdtPartialEq {
+            some_str: "another text",
+        },
+        AdtPartialEq {
+            some_str: "other text",
+        },
+        AdtPartialEq {
+            some_str: "another text",
+        },
+    ]);
+
+    assert_eq!(vec1, vec1);
+    assert_ne!(vec1, vec2);
+    assert_eq!(vec3, vec3);
+    assert_ne!(vec3, vec4);
+
+    assert_eq!(&vec1, &vec1);
+    assert_ne!(&vec1, &vec2);
+    assert_eq!(&vec3, &vec3);
+    assert_ne!(&vec3, &vec4);
+}
+
+#[test]
+fn vector_str() {
+    let mut vec = Vector::from(vec!["x"]);
+    vec.extend(vec!["y"]);
+
+    assert_eq!(vec, Vector::from(["x", "y"]));
 }

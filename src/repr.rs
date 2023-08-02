@@ -75,7 +75,7 @@ impl<T: Clone> Repr<T> {
         let new_len = self.len() + data.len();
 
         if new_len > self.capacity() {
-            self.grow(new_len);
+            self.grow_exact(data.len());
         }
 
         for elem in data {
@@ -109,7 +109,7 @@ impl<T> Repr<T> {
     pub fn from_heap(data: &[T]) -> Self {
         let mut repr = Self::new_heap();
 
-        repr.grow(data.len());
+        repr.grow_exact(data.len());
 
         let ptr: *mut T = repr.as_ptr_mut();
         let data_ptr = data as *const [T];
@@ -187,7 +187,7 @@ impl<T> Repr<T> {
                     self.inline_data_mut()[len] = elem;
                     self.set_len(new_len);
                 } else {
-                    self.grow(new_len);
+                    self.grow();
                     self.heap_push(elem);
                 }
             }
@@ -214,7 +214,7 @@ impl<T> Repr<T> {
         assert!(len + 1 > idx, "index is out of range");
 
         if len == self.capacity() {
-            self.grow(0);
+            self.grow();
         }
 
         let count = self.len() - idx;
@@ -289,7 +289,7 @@ impl<T> Repr<T> {
 
     pub fn heap_push(&mut self, elem: T) {
         if self.len() == self.capacity() {
-            self.grow(self.len() + 1);
+            self.grow();
         }
 
         let self_heap = self.get_heap_mut();
@@ -301,19 +301,28 @@ impl<T> Repr<T> {
         self_heap.len += 1;
     }
 
-    fn grow(&mut self, min_size: usize) {
+    #[inline]
+    fn grow(&mut self) {
+        // grow by 2x when unspecified
+        self.grow_exact(self.capacity());
+    }
+
+    fn grow_exact(&mut self, grow_by: usize) {
         assert!(mem::size_of::<T>() != 0); // don't grow for zst
 
         let (new_cap, new_layout) = if self.capacity() == 0 {
-            let new_cap = min_size.max(1);
+            let new_cap = grow_by.max(1);
             (new_cap, Layout::array::<T>(new_cap).unwrap())
         } else {
-            // Grow at 2x
-            let new_cap = min_size.max(2 * self.capacity());
+            let new_cap = self.capacity() + grow_by;
             let new_layout = Layout::array::<T>(new_cap).unwrap();
 
             (new_cap, new_layout)
         };
+
+        if self.is_inline() && new_cap * mem::size_of::<T>() <= INLINE_SIZE {
+            return;
+        }
 
         assert!(
             new_layout.size() <= isize::MAX as usize,
@@ -324,7 +333,6 @@ impl<T> Repr<T> {
             match self.is_inline() {
                 true => {
                     // grow from stack to heap
-                    debug_assert!(new_cap * mem::size_of::<T>() >= INLINE_SIZE);
                     self.inline_to_heap(new_cap)
                 }
                 false => unsafe { alloc(new_layout) },
@@ -333,7 +341,6 @@ impl<T> Repr<T> {
             match self.is_inline() {
                 true => {
                     // grow from stack to heap
-                    debug_assert!(new_cap * mem::size_of::<T>() > INLINE_SIZE);
                     self.inline_to_heap(new_cap)
                 }
                 false => {
